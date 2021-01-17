@@ -9,9 +9,10 @@ from tqdm import tqdm
 
 
 class Preprocessor:
-    def __init__(self, input, output):
+    def __init__(self, input, output, type):
         self.input = input
         self.output = output
+        self.type = type
         self.filenames = os.listdir(self.input)
         try:
             self.filenames.remove("Masks")
@@ -49,7 +50,7 @@ class Preprocessor:
         cv2.imwrite(self.output + "/Edges/" + filename + ".png", edge)
 
     def patch(self, filename, patch_size):
-        img = cv2.imread(self.output + "/Tissue Images/" + filename + ".png")
+        img = cv2.imread(self.output + "/Tissue Images/" + filename + self.type)
         img = np.pad(img, ((12, 12), (12, 12), (0, 0)), "symmetric")
 
         mask = cv2.imread(self.output + "/Masks/" + filename + ".png")
@@ -86,6 +87,7 @@ def parse_args(argv):
 
     parser.add_argument("--input", type=str, help="directory to annotations", default="./")
     parser.add_argument("--output", type=str, help="output directory", default="./")
+    parser.add_argument("--type", type=str, help="type of images", default=".png")
 
     return parser.parse_args(argv)
 
@@ -94,8 +96,9 @@ if __name__ == "__main__":
     args = parse_args(sys.argv[1:])
     input = args.input
     output = args.output
+    type = args.type
 
-    preprocessor = Preprocessor(input, output)
+    preprocessor = Preprocessor(input, output, type)
     split_filenames = []
     for filename in preprocessor.filenames:
         split_filename, _ = os.path.splitext(filename)
