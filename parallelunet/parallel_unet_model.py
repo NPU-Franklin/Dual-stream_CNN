@@ -72,6 +72,8 @@ class ParallelUNet(nn.Module):
             x2 = self.upsample(x5_2)
             x1 = copy_crop(x1, x4_1)
             x2 = copy_crop(x2, x4_2)
+            if self.bridge_enable:
+                x1, x2 = Bridge(x1, x2)
             x1 = DoubleConv(1024, 512 // self.factor, 1024 // 2)(x1)
             x2 = DoubleConv(1024, 512 // self.factor, 1024 // 2)(x2)
         else:
@@ -79,6 +81,8 @@ class ParallelUNet(nn.Module):
             x2 = nn.ConvTranspose2d(1024, 1024 // 2, kernel_size=2, stride=2)(x5_2)
             x1 = copy_crop(x1, x4_1)
             x2 = copy_crop(x2, x4_2)
+            if self.bridge_enable:
+                x1, x2 = Bridge(x1, x2)
             x1 = DoubleConv(1024, 512 // self.factor)(x1)
             x2 = DoubleConv(1024, 512 // self.factor)(x2)
 
@@ -88,6 +92,8 @@ class ParallelUNet(nn.Module):
             x2 = self.upsample(x2)
             x1 = copy_crop(x1, x3_1)
             x2 = copy_crop(x2, x3_2)
+            if self.bridge_enable:
+                x1, x2 = Bridge(x1, x2)
             x1 = DoubleConv(512, 256 // self.factor, 512 // 2)(x1)
             x2 = DoubleConv(512, 256 // self.factor, 512 // 2)(x2)
         else:
@@ -95,6 +101,8 @@ class ParallelUNet(nn.Module):
             x2 = nn.ConvTranspose2d(512, 512 // 2, kernel_size=2, stride=2)(x2)
             x1 = copy_crop(x1, x3_1)
             x2 = copy_crop(x2, x3_2)
+            if self.bridge_enable:
+                x1, x2 = Bridge(x1, x2)
             x1 = DoubleConv(512, 256 // self.factor)(x1)
             x2 = DoubleConv(512, 256 // self.factor)(x2)
 
@@ -104,6 +112,8 @@ class ParallelUNet(nn.Module):
             x2 = self.upsample(x2)
             x1 = copy_crop(x1, x2_1)
             x2 = copy_crop(x2, x2_2)
+            if self.bridge_enable:
+                x1, x2 = Bridge(x1, x2)
             x1 = DoubleConv(256, 128 // self.factor, 256 // 2)(x1)
             x2 = DoubleConv(256, 128 // self.factor, 256 // 2)(x2)
         else:
@@ -111,6 +121,8 @@ class ParallelUNet(nn.Module):
             x2 = nn.ConvTranspose2d(256, 256 // 2, kernel_size=2, stride=2)(x2)
             x1 = copy_crop(x1, x2_1)
             x2 = copy_crop(x2, x2_2)
+            if self.bridge_enable:
+                x1, x2 = Bridge(x1, x2)
             x1 = DoubleConv(256, 128 // self.factor)(x1)
             x2 = DoubleConv(256, 128 // self.factor)(x2)
 
@@ -120,6 +132,8 @@ class ParallelUNet(nn.Module):
             x2 = self.upsample(x2)
             x1 = copy_crop(x1, x1_1)
             x2 = copy_crop(x2, x1_2)
+            if self.bridge_enable:
+                x1, x2 = Bridge(x1, x2)
             x1 = DoubleConv(128, 64, 128 // 2)(x1)
             x2 = DoubleConv(128, 64, 128 // 2)(x2)
         else:
@@ -127,6 +141,8 @@ class ParallelUNet(nn.Module):
             x2 = nn.ConvTranspose2d(128, 128 // 2, kernel_size=2, stride=2)(x2)
             x1 = copy_crop(x1, x1_1)
             x2 = copy_crop(x2, x1_2)
+            if self.bridge_enable:
+                x1, x2 = Bridge(x1, x2)
             x1 = DoubleConv(128, 64)(x1)
             x2 = DoubleConv(128, 64)(x2)
 
