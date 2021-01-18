@@ -103,30 +103,30 @@ def train_net(net,
                         tag = tag.replace('.', '/')
                         writer.add_histogram('weights/' + tag, value.data.cpu().numpy(), global_step)
                         writer.add_histogram('grads/' + tag, value.grad.data.cpu().numpy(), global_step)
-                        score1, score2 = test_net(net, test_loader, n_classes)
+                    score1, score2 = test_net(net, test_loader, n_classes)
 
-                        writer.add_scalar('learning_rate', optimizer.param_groups[0]['lr'], global_step)
+                    writer.add_scalar('learning_rate', optimizer.param_groups[0]['lr'], global_step)
 
-                        if n_classes > 1:
-                            logging.info('Validation cross entropy for masks: {}'.format(score1))
-                            logging.info('Validation cross_entropy for edges: {}'.format(score2))
-                            writer.add_scalar('Loss/test_on_masks', score1, global_step)
-                            writer.add_scalar('Loss/test_on_edges', score2, global_step)
-                        else:
-                            logging.info('Validation Dice Coeff for masks: {}'.format(score1))
-                            logging.info('Validation Dice Coeff for edges: {}'.format(score2))
-                            writer.add_scalar('Dice/test_on_masks', score1, global_step)
-                            writer.add_scalar('Dice/test_on_edges', score2, global_step)
+                    if n_classes > 1:
+                        logging.info('Validation cross entropy for masks: {}'.format(score1))
+                        logging.info('Validation cross_entropy for edges: {}'.format(score2))
+                        writer.add_scalar('Loss/test_on_masks', score1, global_step)
+                        writer.add_scalar('Loss/test_on_edges', score2, global_step)
+                    else:
+                        logging.info('Validation Dice Coeff for masks: {}'.format(score1))
+                        logging.info('Validation Dice Coeff for edges: {}'.format(score2))
+                        writer.add_scalar('Dice/test_on_masks', score1, global_step)
+                        writer.add_scalar('Dice/test_on_edges', score2, global_step)
 
-                        writer.add_images('images', imgs, global_step)
-                        writer.add_images('masks/true', true_masks, global_step)
-                        writer.add_images('edges/true', true_edges, global_step)
-                        if n_classes == 1:
-                            writer.add_images('masks/pred', torch.sigmoid(masks_pred) > 0.5, global_step)
-                            writer.add_images('edges/pred', torch.sigmoid(edges_pred) > 0.5, global_step)
-                        else:
-                            writer.add_images('masks/pred', masks_pred > 0.5, global_step)
-                            writer.add_images('edges/pred', edges_pred > 0.5, global_step)
+                    writer.add_images('images', imgs, global_step)
+                    writer.add_images('masks/true', true_masks, global_step)
+                    writer.add_images('edges/true', true_edges, global_step)
+                    if n_classes == 1:
+                        writer.add_images('masks/pred', torch.sigmoid(masks_pred) > 0.5, global_step)
+                        writer.add_images('edges/pred', torch.sigmoid(edges_pred) > 0.5, global_step)
+                    else:
+                        writer.add_images('masks/pred', masks_pred > 0.5, global_step)
+                        writer.add_images('edges/pred', edges_pred > 0.5, global_step)
 
         if save_cp:
             try:
