@@ -57,7 +57,7 @@ class ParallelDown(nn.Module):
         if self.bridge_enable:
             x1, x2 = self.bridge(x1, x2)
 
-        return self.double_conv1(x1, x2)
+        return self.conv(x1, x2)
 
 
 class ParallelUp(nn.Module):
