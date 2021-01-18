@@ -5,6 +5,7 @@ Parts of the paralllelell U-Net mddel
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 from .bridge import Bridge
 
 
@@ -38,6 +39,7 @@ class ParallelDoubleConv(nn.Module):
 
 class ParallelDown(nn.Module):
     """Downscaling with maxpool then bridging and double conv"""
+
     def __init__(self, in_channels, out_channels, bridge_enable=True):
         super().__init__()
         self.bridge_enable = bridge_enable
@@ -74,14 +76,14 @@ class ParallelUp(nn.Module):
             if bridge_enable:
                 self.bridge = Bridge()
 
-            self. conv = ParallelDoubleConv(in_channels, out_channels, in_channels // 2)
+            self.conv = ParallelDoubleConv(in_channels, out_channels, in_channels // 2)
         else:
             self.up1 = nn.ConvTranspose2d(in_channels, in_channels // 2, kernel_size=2, stride=2)
 
             if bridge_enable:
                 self.bridge = Bridge()
 
-            self. conv = ParallelDoubleConv(in_channels, out_channels)
+            self.conv = ParallelDoubleConv(in_channels, out_channels)
 
     def forward(self, x1_1, x1_2, x2_1, x2_2):
         x1_1 = self.up1(x1_1)

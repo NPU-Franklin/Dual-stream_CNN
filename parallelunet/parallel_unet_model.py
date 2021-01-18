@@ -4,11 +4,10 @@ from .parallel_unet_parts import *
 
 
 class ParallelUNet(nn.Module):
-    def __init__(self, n_channels, n_classes, img_size, bilinear=True, bridge_enable=True):
+    def __init__(self, n_channels, n_classes, bilinear=True, bridge_enable=True):
         super(ParallelUNet, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
-        self.img_size = img_size
         self.bilinear = bilinear
         self.bridge_enable = bridge_enable
 

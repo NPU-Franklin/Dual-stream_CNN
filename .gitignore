@@ -7,5 +7,5 @@ checkpoints/
 SUBMISSION*
 venv/
 .idea/
-test.py
 test/
+tmp.py
