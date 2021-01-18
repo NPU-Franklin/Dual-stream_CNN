@@ -26,6 +26,8 @@ def test_net(net, loader, n_classes):
             else:
                 pred1 = torch.sigmoid(mask_pred)
                 pred2 = torch.sigmoid(edge_pred)
+                pred1 = (pred1 > 0.5).float()
+                pred2 = (pred2 > 0.5).float()
                 accuracy1 = dice_coeff(pred1, true_masks).item()
                 accuracy2 = dice_coeff(pred2, true_edges).item()
             pbar.update()
