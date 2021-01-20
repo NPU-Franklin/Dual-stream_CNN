@@ -4,23 +4,23 @@ from .parallel_unet_parts import *
 
 
 class ParallelUNet(nn.Module):
-    def __init__(self, n_channels, n_classes, bilinear=True, bridge_enable=True):
+    def __init__(self, n_channels, n_classes, bilinear=True, cross_stitch_enable=True):
         super(ParallelUNet, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
-        self.bridge_enable = bridge_enable
+        self.cross_stitch_enable = cross_stitch_enable
 
         self.inc = ParallelDoubleConv(n_channels, 64)
-        self.down1 = ParallelDown(64, 128, bridge_enable)
-        self.down2 = ParallelDown(128, 256, bridge_enable)
-        self.down3 = ParallelDown(256, 512, bridge_enable)
+        self.down1 = ParallelDown(64, 128, cross_stitch_enable)
+        self.down2 = ParallelDown(128, 256, cross_stitch_enable)
+        self.down3 = ParallelDown(256, 512, cross_stitch_enable)
         factor = 2 if bilinear else 1
-        self.down4 = ParallelDown(512, 1024 // factor, bridge_enable)
-        self.up1 = ParallelUp(1024, 512 // factor, bridge_enable, bilinear)
-        self.up2 = ParallelUp(512, 256 // factor, bridge_enable, bilinear)
-        self.up3 = ParallelUp(256, 128 // factor, bridge_enable, bilinear)
-        self.up4 = ParallelUp(128, 64, bridge_enable, bilinear)
+        self.down4 = ParallelDown(512, 1024 // factor, cross_stitch_enable)
+        self.up1 = ParallelUp(1024, 512 // factor, cross_stitch_enable, bilinear)
+        self.up2 = ParallelUp(512, 256 // factor, cross_stitch_enable, bilinear)
+        self.up3 = ParallelUp(256, 128 // factor, cross_stitch_enable, bilinear)
+        self.up4 = ParallelUp(128, 64, cross_stitch_enable, bilinear)
         self.outc = ParallelOutConv(64, n_classes)
 
     def forward(self, x):

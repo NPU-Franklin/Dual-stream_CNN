@@ -5,7 +5,7 @@ from tqdm import tqdm
 from dice_loss import dice_coeff
 
 
-def test_net(net, loader, n_classes):
+def eval_parallel_net(net, loader, n_classes):
     """Evaluation without the densecrf with the dice coefficient"""
     net.eval()
     n_test = len(loader)

@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from parallelunet import ParallelUNet
-from test import test_net
+from parallel_eval import eval_parallel_net
 from utils import MoNuSegTrainingDataset, MoNuSegTestDataset
 
 os.environ['CUDA_VISIBLE_DIVICES'] = "0, 1, 2"
@@ -103,20 +103,20 @@ def train_net(net,
                         tag = tag.replace('.', '/')
                         writer.add_histogram('weights/' + tag, value.data.cpu().numpy(), global_step)
                         writer.add_histogram('grads/' + tag, value.grad.data.cpu().numpy(), global_step)
-                    score1, score2 = test_net(net, test_loader, n_classes)
+                    score1, score2 = eval_parallel_net(net, test_loader, n_classes)
 
                     writer.add_scalar('learning_rate', optimizer.param_groups[0]['lr'], global_step)
 
                     if n_classes > 1:
                         logging.info('Validation cross entropy for masks: {}'.format(score1))
                         logging.info('Validation cross_entropy for edges: {}'.format(score2))
-                        writer.add_scalar('Loss/test_on_masks', score1, global_step)
-                        writer.add_scalar('Loss/test_on_edges', score2, global_step)
+                        writer.add_scalar('Loss/eval_on_masks', score1, global_step)
+                        writer.add_scalar('Loss/eval_on_edges', score2, global_step)
                     else:
                         logging.info('Validation Dice Coeff for masks: {}'.format(score1))
                         logging.info('Validation Dice Coeff for edges: {}'.format(score2))
-                        writer.add_scalar('Dice/test_on_masks', score1, global_step)
-                        writer.add_scalar('Dice/test_on_edges', score2, global_step)
+                        writer.add_scalar('Dice/eval_on_masks', score1, global_step)
+                        writer.add_scalar('Dice/eval_on_edges', score2, global_step)
 
                     writer.add_images('images', imgs, global_step)
                     writer.add_images('masks/true', true_masks, global_step)
@@ -167,14 +167,14 @@ if __name__ == '__main__':
     #   - For 1 class and background, use n_classes=1
     #   - For 2 classes, use n_classes=1
     #   - For N > 2 classes, use n_classes=N
-    net = ParallelUNet(n_channels=3, n_classes=1, bilinear=True, bridge_enable=True)
+    net = ParallelUNet(n_channels=3, n_classes=1, bilinear=True, cross_stitch_enable=True)
     logging.info('Network:\n'
                  '\t{} input channels\n'
                  '\t{} output channels (classes)\n'
                  '\t{type} upscaling\n'
-                 '\t{state} bridge'.format(net.n_channels, net.n_classes,
-                                           type="Bilinear" if net.bilinear else "Transposed conv",
-                                           state="Enable" if net.bridge_enable else "Disable"))
+                 '\t{state} cross_stitch'.format(net.n_channels, net.n_classes,
+                                                 type="Bilinear" if net.bilinear else "Transposed conv",
+                                                 state="Enable" if net.cross_stitch_enable else "Disable"))
     try:
         if args.load:
             train_net(net=net,

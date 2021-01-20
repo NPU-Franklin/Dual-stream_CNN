@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .bridge import Bridge
+from .cross_stitch import CrossStitch
 
 
 class ParallelDoubleConv(nn.Module):
@@ -40,15 +40,15 @@ class ParallelDoubleConv(nn.Module):
 class ParallelDown(nn.Module):
     """Downscaling with maxpool then bridging and double conv"""
 
-    def __init__(self, in_channels, out_channels, bridge_enable=True):
+    def __init__(self, in_channels, out_channels, cross_stitch_enable=True):
         super().__init__()
-        self.bridge_enable = bridge_enable
+        self.cross_stitch_enable = cross_stitch_enable
 
         self.maxpool1 = nn.MaxPool2d(2)
         self.maxpool2 = nn.MaxPool2d(2)
 
-        if bridge_enable:
-            self.bridge = Bridge()
+        if cross_stitch_enable:
+            self.cross_stitch = CrossStitch()
 
         self.conv = ParallelDoubleConv(in_channels, out_channels)
 
@@ -56,8 +56,8 @@ class ParallelDown(nn.Module):
         x1 = self.maxpool1(x1)
         x2 = self.maxpool2(x2)
 
-        if self.bridge_enable:
-            x1, x2 = self.bridge(x1, x2)
+        if self.cross_stitch_enable:
+            x1, x2 = self.cross_stitch(x1, x2)
 
         return self.conv(x1, x2)
 
@@ -65,23 +65,23 @@ class ParallelDown(nn.Module):
 class ParallelUp(nn.Module):
     """Upscaling then bridging and double conv"""
 
-    def __init__(self, in_channels, out_channels, bridge_enable=True, bilinear=True):
+    def __init__(self, in_channels, out_channels, cross_stitch_enable=True, bilinear=True):
         super().__init__()
-        self.bridge_enable = bridge_enable
+        self.cross_stitch_enable = cross_stitch_enable
 
         if bilinear:
             self.up1 = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
             self.up2 = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
 
-            if bridge_enable:
-                self.bridge = Bridge()
+            if cross_stitch_enable:
+                self.cross_stitch = CrossStitch()
 
             self.conv = ParallelDoubleConv(in_channels, out_channels, in_channels // 2)
         else:
             self.up1 = nn.ConvTranspose2d(in_channels, in_channels // 2, kernel_size=2, stride=2)
 
-            if bridge_enable:
-                self.bridge = Bridge()
+            if cross_stitch_enable:
+                self.cross_stitch = CrossStitch()
 
             self.conv = ParallelDoubleConv(in_channels, out_channels)
 
@@ -102,8 +102,8 @@ class ParallelUp(nn.Module):
         x1 = torch.cat([x1_1, x1_2], dim=1)
         x2 = torch.cat([x2_1, x2_2], dim=1)
 
-        if self.bridge_enable:
-            x1, x2 = self.bridge(x1, x2)
+        if self.cross_stitch_enable:
+            x1, x2 = self.cross_stitch(x1, x2)
 
         return self.conv(x1, x2)
 
