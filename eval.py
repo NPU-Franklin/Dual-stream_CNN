@@ -8,15 +8,12 @@ from dice_loss import dice_coeff
 def eval_net(net, loader, n_classes):
     """Evaluation without the densecrf with the dice coefficient"""
     net.eval()
-    mask_type = torch.float32 if n_classes == 1 else torch.long
     n_val = len(loader)  # the number of batch
     tot = 0
 
     with tqdm(total=n_val, desc='Validation round', unit='batch', leave=False) as pbar:
         for batch in loader:
             imgs, true_masks = batch['image'], batch['mask']
-            # imgs = imgs.to(device=device, dtype=torch.float32)
-            # true_masks = true_masks.to(device=device, dtype=mask_type)
             imgs = imgs.cuda()
             true_masks = true_masks.cuda()
 
