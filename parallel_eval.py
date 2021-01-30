@@ -5,15 +5,15 @@ from tqdm import tqdm
 from dice_loss import dice_coeff
 
 
-def eval_parallel_net(net, loader, n_classes):
+def eval_parallel_net(net, val_loader, n_classes):
     """Evaluation without the densecrf with the dice coefficient"""
     net.eval()
-    n_test = len(loader)
+    n_val = len(val_loader)
     tot1 = 0
     tot2 = 0
 
-    with tqdm(total=n_test, desc="Validation round", unit='batch', leave=False) as pbar:
-        for batch in loader:
+    with tqdm(total=n_val, desc="Validation or test round", unit='batch', leave=False) as pbar:
+        for batch in val_loader:
             imgs, true_masks, true_edges = batch['image'], batch['mask'], batch['edge']
             imgs = imgs.cuda()
             true_masks = true_masks.cuda()
@@ -37,4 +37,4 @@ def eval_parallel_net(net, loader, n_classes):
             pbar.update()
 
     net.train()
-    return (tot1 / n_test), (tot2 / n_test)
+    return (tot1 / n_val), (tot2 / n_val)

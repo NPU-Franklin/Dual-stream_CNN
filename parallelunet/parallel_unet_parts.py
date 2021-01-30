@@ -65,24 +65,16 @@ class ParallelDown(nn.Module):
 class ParallelUp(nn.Module):
     """Upscaling then bridging and double conv"""
 
-    def __init__(self, in_channels, out_channels, cross_stitch_enable=True, bilinear=True):
+    def __init__(self, in_channels, out_channels, bilinear=True):
         super().__init__()
-        self.cross_stitch_enable = cross_stitch_enable
 
         if bilinear:
             self.up1 = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
             self.up2 = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
-
-            if cross_stitch_enable:
-                self.cross_stitch = CrossStitch()
-
             self.conv = ParallelDoubleConv(in_channels, out_channels, in_channels // 2)
         else:
             self.up1 = nn.ConvTranspose2d(in_channels, in_channels // 2, kernel_size=2, stride=2)
-
-            if cross_stitch_enable:
-                self.cross_stitch = CrossStitch()
-
+            self.up2 = nn.ConvTranspose2d(in_channels, in_channels // 2, kernel_size=2, stride=2)
             self.conv = ParallelDoubleConv(in_channels, out_channels)
 
     def forward(self, x1_1, x1_2, x2_1, x2_2):
@@ -101,9 +93,6 @@ class ParallelUp(nn.Module):
 
         x1 = torch.cat([x1_1, x1_2], dim=1)
         x2 = torch.cat([x2_1, x2_2], dim=1)
-
-        if self.cross_stitch_enable:
-            x1, x2 = self.cross_stitch(x1, x2)
 
         return self.conv(x1, x2)
 

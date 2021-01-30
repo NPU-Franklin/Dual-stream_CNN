@@ -17,10 +17,10 @@ class ParallelUNet(nn.Module):
         self.down3 = ParallelDown(256, 512, cross_stitch_enable)
         factor = 2 if bilinear else 1
         self.down4 = ParallelDown(512, 1024 // factor, cross_stitch_enable)
-        self.up1 = ParallelUp(1024, 512 // factor, cross_stitch_enable, bilinear)
-        self.up2 = ParallelUp(512, 256 // factor, cross_stitch_enable, bilinear)
-        self.up3 = ParallelUp(256, 128 // factor, cross_stitch_enable, bilinear)
-        self.up4 = ParallelUp(128, 64, cross_stitch_enable, bilinear)
+        self.up1 = ParallelUp(1024, 512 // factor, bilinear)
+        self.up2 = ParallelUp(512, 256 // factor, bilinear)
+        self.up3 = ParallelUp(256, 128 // factor, bilinear)
+        self.up4 = ParallelUp(128, 64, bilinear)
         self.outc = ParallelOutConv(64, n_classes)
 
     def forward(self, x):
