@@ -40,7 +40,7 @@ class ParallelDoubleConv(nn.Module):
 class ParallelDown(nn.Module):
     """Downscaling with maxpool then bridging and double conv"""
 
-    def __init__(self, in_channels, out_channels, cross_stitch_enable=True):
+    def __init__(self, in_channels, out_channels, cross_stitch_enable=True, **kwargs):
         super().__init__()
         self.cross_stitch_enable = cross_stitch_enable
 
@@ -48,7 +48,7 @@ class ParallelDown(nn.Module):
         self.maxpool2 = nn.MaxPool2d(2)
 
         if cross_stitch_enable:
-            self.cross_stitch = CrossStitch()
+            self.cross_stitch = CrossStitch(kwargs["alpha"], kwargs["beta"])
 
         self.conv = ParallelDoubleConv(in_channels, out_channels)
 
