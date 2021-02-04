@@ -80,7 +80,7 @@ def train_net(net,
     ignored_params = list(map(id, cross_stitches))
     base_params = list(filter(lambda p: id(p) not in ignored_params, net.parameters()))
     optimizer = optim.Adam([{'params': base_params},
-                            {'params': cross_stitches, 'lr': lr * 1000}], lr=lr, weight_decay=1e-8)
+                            {'params': cross_stitches, 'lr': lr * 1000}], lr=lr, weight_decay=1e-7)
 
     if n_classes > 1:
         criterion = nn.CrossEntropyLoss()
@@ -116,7 +116,7 @@ def train_net(net,
 
                 optimizer.zero_grad()
                 total_loss.backward()
-                nn.utils.clip_grad_value_(net.parameters(), 0.1)
+                # nn.utils.clip_grad_value_(net.parameters(), 0.1)
                 optimizer.step()
 
                 pbar.update(imgs.shape[0])
