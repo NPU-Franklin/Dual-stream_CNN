@@ -5,6 +5,8 @@ import xml.etree.ElementTree as ET
 
 import cv2
 import numpy as np
+import torchvision.transforms.functional as TF
+from PIL import Image
 from tqdm import tqdm
 
 
@@ -26,34 +28,24 @@ class Preprocessor:
             os.mkdir(self.output)
 
     def rotate(self, filename):
-        img = cv2.imread(self.output + "/Tissue Images/" + filename + self.type)
-        mask = cv2.imread(self.output + "/Masks/" + filename + ".png")
-        edge = cv2.imread(self.output + "/Edges/" + filename + ".png")
+        img = Image.open(self.output + "/Tissue Images/" + filename + self.type)
+        mask = Image.open(self.output + "/Masks/" + filename + ".png")
+        edge = Image.open(self.output + "/Edges/" + filename + ".png")
 
         new_filenames = []
         for image in [img, mask, edge]:
-            for angle in range(30, 270, 30):
-                rotate_matrix = np.array([[np.cos(angle), -np.sin(angle), 0],
-                                          [np.sin(angle), np.cos(angle), 0],
-                                          [0, 0, 1]])
-                center = np.array((0.5 * img.shape[0], 0.5 * img.shape[1]))
-                pos_basic_matrix = np.array([[1, 0, center[0]],
-                                             [0, 1, center[1]],
-                                             [0, 0, 1]])
-                neg_basic_matrix = np.array([[1, 0, -center[0]],
-                                             [0, 1, -center[1]],
-                                             [0, 0, 1]])
-                rotate_matrix = np.linalg.multi_dot([pos_basic_matrix, rotate_matrix, neg_basic_matrix])
-                out_img = cv2.warpAffine(image, rotate_matrix[:2, :], dsize=(img.shape[1], img.shape[0]),
-                                         flags=cv2.INTER_LINEAR,
-                                         borderMode=cv2.BORDER_REFLECT, borderValue=0)
+            for angle in range(15, 360, 15):
+                out_img = TF.rotate(image, angle)
+
                 if image is img:
-                    new_filename = str(self.output + "/Tissue Images/" + filename + "_{}".format(angle) + ".png")
+                    new_filename = str(self.output + "/Tissue Images/" + filename + "_{}".format(angle) + self.type)
+                    out_img.save(new_filename, self.type[1:])
                 elif image is mask:
                     new_filename = str(self.output + "/Masks/" + filename + "_{}".format(angle) + ".png")
+                    out_img.save(new_filename, "png")
                 else:
                     new_filename = str(self.output + "/Edges/" + filename + "_{}".format(angle) + ".png")
-                cv2.imwrite(new_filename, out_img)
+                    out_img.save(new_filename, "png")
                 new_filenames.append(filename + "_{}".format(angle))
         return new_filenames
 
@@ -85,13 +77,13 @@ class Preprocessor:
 
     def patch(self, filename, patch_size):
         img = cv2.imread(self.output + "/Tissue Images/" + filename + self.type)
-        img = np.pad(img, ((12, 12), (12, 12), (0, 0)), "symmetric")
+        img = np.pad(img, ((12, 12), (12, 12), (0, 0)), "constant")
 
         mask = cv2.imread(self.output + "/Masks/" + filename + ".png")
-        mask = np.pad(mask, ((12, 12), (12, 12), (0, 0)), "symmetric")
+        mask = np.pad(mask, ((12, 12), (12, 12), (0, 0)), "constant")
 
         edge = cv2.imread(self.output + "/Edges/" + filename + ".png")
-        edge = np.pad(edge, ((12, 12), (12, 12), (0, 0)), "symmetric")
+        edge = np.pad(edge, ((12, 12), (12, 12), (0, 0)), "constant")
 
         num_rows = int((img.shape[0] - 256) / 128) + 1
         num_cols = int(img.shape[1] // 256)
@@ -117,7 +109,8 @@ class Preprocessor:
 
 
 def parse_args(argv):
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Preprocess dataset for training or testing.",
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("-i", "--input", type=str, dest="input", help="directory to annotations", default="./")
     parser.add_argument("-o", "--output", type=str, dest="output", help="output directory", default="./")
