@@ -12,11 +12,11 @@ class ParallelUNet(nn.Module):
         self.cross_stitch_enable = cross_stitch_enable
 
         self.inc = ParallelDoubleConv(n_channels, 64)
-        self.down1 = ParallelDown(64, 128, cross_stitch_enable, alpha=0.1, beta=0.9)
-        self.down2 = ParallelDown(128, 256, cross_stitch_enable, alpha=0.1, beta=0.9)
-        self.down3 = ParallelDown(256, 512, cross_stitch_enable, alpha=0.9, beta=0.1)
+        self.down1 = ParallelDown(64, 128, cross_stitch_enable)
+        self.down2 = ParallelDown(128, 256, cross_stitch_enable)
+        self.down3 = ParallelDown(256, 512, cross_stitch_enable)
         factor = 2 if bilinear else 1
-        self.down4 = ParallelDown(512, 1024 // factor, cross_stitch_enable, alpha=0.9, beta=0.1)
+        self.down4 = ParallelDown(512, 1024 // factor, cross_stitch_enable)
         self.up1 = ParallelUp(1024, 512 // factor, bilinear)
         self.up2 = ParallelUp(512, 256 // factor, bilinear)
         self.up3 = ParallelUp(256, 128 // factor, bilinear)
