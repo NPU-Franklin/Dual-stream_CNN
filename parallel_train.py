@@ -75,12 +75,13 @@ def train_net(net,
         Image scaling:      {}
     """.format(epochs, batch_size, lr, n_train, n_val, n_test, save_cp, device.type, img_scale))
 
-    cross_stitches = [net.module.down1.cross_stitch.cross_stitch, net.module.down2.cross_stitch.cross_stitch,
-                      net.module.down3.cross_stitch.cross_stitch, net.module.down4.cross_stitch.cross_stitch]
-    ignored_params = list(map(id, cross_stitches))
-    base_params = list(filter(lambda p: id(p) not in ignored_params, net.parameters()))
-    optimizer = optim.Adam([{'params': base_params},
-                            {'params': cross_stitches, 'lr': lr * 1000}], lr=lr, weight_decay=1e-7)
+    # cross_stitches = [net.module.down1.bridge.bridge, net.module.down2.bridge.bridge,
+    #                   net.module.down3.bridge.bridge, net.module.down4.bridge.bridge]
+    # ignored_params = list(map(id, cross_stitches))
+    # base_params = list(filter(lambda p: id(p) not in ignored_params, net.parameters()))
+    # optimizer = optim.Adam([{'params': base_params},
+    # {'params': cross_stitches, 'lr': lr * 1000}], lr=lr, weight_decay=1e-7)
+    optimizer = optim.Adam(net.parameters(), lr=lr, weight_decay=1e-7)
 
     if n_classes > 1:
         criterion = nn.CrossEntropyLoss()
@@ -207,14 +208,12 @@ if __name__ == '__main__':
     #   - For 1 class and background, use n_classes=1
     #   - For 2 classes, use n_classes=1
     #   - For N > 2 classes, use n_classes=N
-    net = ParallelUNet(n_channels=3, n_classes=1, bilinear=True, cross_stitch_enable=True)
+    net = ParallelUNet(n_channels=3, n_classes=1, bilinear=True)
     logging.info('Network:\n'
                  '\t{} input channels\n'
                  '\t{} output channels (classes)\n'
-                 '\t{type} upscaling\n'
-                 '\t{state} cross_stitch'.format(net.n_channels, net.n_classes,
-                                                 type="Bilinear" if net.bilinear else "Transposed conv",
-                                                 state="Enable" if net.cross_stitch_enable else "Disable"))
+                 '\t{type} upscaling\n'.format(net.n_channels, net.n_classes,
+                                               type="Bilinear" if net.bilinear else "Transposed conv"))
     try:
         if args.load:
             train_net(net=net,

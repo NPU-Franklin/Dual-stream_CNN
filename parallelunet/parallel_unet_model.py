@@ -4,19 +4,18 @@ from .parallel_unet_parts import *
 
 
 class ParallelUNet(nn.Module):
-    def __init__(self, n_channels, n_classes, bilinear=True, cross_stitch_enable=True):
+    def __init__(self, n_channels, n_classes, bilinear=True):
         super(ParallelUNet, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
-        self.cross_stitch_enable = cross_stitch_enable
 
         self.inc = ParallelDoubleConv(n_channels, 64)
-        self.down1 = ParallelDown(64, 128, cross_stitch_enable)
-        self.down2 = ParallelDown(128, 256, cross_stitch_enable)
-        self.down3 = ParallelDown(256, 512, cross_stitch_enable)
+        self.down1 = ParallelDown(64, 128)
+        self.down2 = ParallelDown(128, 256)
+        self.down3 = ParallelDown(256, 512)
         factor = 2 if bilinear else 1
-        self.down4 = ParallelDown(512, 1024 // factor, cross_stitch_enable)
+        self.down4 = ParallelDown(512, 1024 // factor)
         self.up1 = ParallelUp(1024, 512 // factor, bilinear)
         self.up2 = ParallelUp(512, 256 // factor, bilinear)
         self.up3 = ParallelUp(256, 128 // factor, bilinear)

@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .cross_stitch import CrossStitch
+from .bridge import Bridge
 
 
 class ParallelDoubleConv(nn.Module):
@@ -40,15 +40,13 @@ class ParallelDoubleConv(nn.Module):
 class ParallelDown(nn.Module):
     """Downscaling with maxpool then bridging and double conv"""
 
-    def __init__(self, in_channels, out_channels, cross_stitch_enable=True):
+    def __init__(self, in_channels, out_channels):
         super().__init__()
-        self.cross_stitch_enable = cross_stitch_enable
 
         self.maxpool1 = nn.MaxPool2d(2)
         self.maxpool2 = nn.MaxPool2d(2)
 
-        if cross_stitch_enable:
-            self.cross_stitch = CrossStitch(in_channels)
+        self.bridge = Bridge(in_channels)
 
         self.conv = ParallelDoubleConv(in_channels, out_channels)
 
@@ -56,8 +54,7 @@ class ParallelDown(nn.Module):
         x1 = self.maxpool1(x1)
         x2 = self.maxpool2(x2)
 
-        if self.cross_stitch_enable:
-            x = self.cross_stitch(x1, x2)
+        x = self.bridge(x1, x2)
 
         return self.conv(x, x)
 
