@@ -49,6 +49,6 @@ if __name__ == "__main__":
                 raise ValueError("Unsupported matrix {}".format(matrix))
             pbar.update()
         score = total / len(imgs)
-        logging.info("Hausdorff Score: {}".format(score))
+        logging.info("{} Score: {}".format(matrix, score))
 
     eng.exit()
