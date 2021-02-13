@@ -5,7 +5,10 @@ import os
 import cv2
 import matlab
 import matlab.engine
+import numpy as np
 from tqdm import tqdm
+
+from eval import metrics
 
 
 def parse_args():
@@ -13,7 +16,9 @@ def parse_args():
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument('-i', '--input', dest='input', type=str, default='', help='input dir')
-    parser.add_argument('-m', '--matrix', dest='matrix', type=str, default='Hausdorff', help='evaluation matrix')
+    parser.add_argument('-m', '--matrix', dest='matrix', type=str, default='Hausdorff', help='evaluation matrix, '
+                                                                                             'include: Hausdorff, '
+                                                                                             'AJI, brp_AJI')
 
     return parser.parse_args()
 
@@ -37,18 +42,24 @@ if __name__ == "__main__":
     logging.info("Evaluation matrix: {}".format(matrix))
 
     with tqdm(total=len(imgs), desc="Eval", unit='img') as pbar:
-        total = 0
+        scores = []
         for img in imgs:
-            pred = cv2.imread(input + "/pred/" + img).tolist()
-            true = cv2.imread(input + "/true/" + img).tolist()
+            pred = cv2.imread(input + "/pred/" + img)
+            true = cv2.imread(input + "/true/" + img)
             if matrix == "Hausdorff":
-                total += eng.ObjectHausdorff(matlab.single(pred), matlab.single(true))
+                scores.append(eng.ObjectHausdorff(matlab.single(pred.tolist()), matlab.single(true.tolist())))
             elif matrix == "AJI":
-                total += eng.Aggregated_Jaccard_Index_v1_0(matlab.single(true), matlab.single(pred))
+                scores.append(
+                    eng.Aggregated_Jaccard_Index_v1_0(matlab.single(true.tolist()), matlab.single(pred.tolist())))
+            elif matrix == "brp_AJI":
+                scores.append(metrics.get_fast_aji(metrics.remap_label(true), metrics.remap_label(pred)))
             else:
                 raise ValueError("Unsupported matrix {}".format(matrix))
             pbar.update()
-        score = total / len(imgs)
-        logging.info("{} Score: {}".format(matrix, score))
+    score = np.array(scores).mean()
+    min = min(scores)
+    max = max(scores)
+    logging.info("{} Score: {}".format(matrix, score))
+    logging.info("Range: {} ~ {}".format(min, max))
 
     eng.exit()
