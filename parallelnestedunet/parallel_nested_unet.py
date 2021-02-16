@@ -88,9 +88,10 @@ class UnetUp(nn.Module):
 
 class ParallelNestedUNet(nn.Module):
 
-    def __init__(self, in_channels=1, n_classes=2, feature_scale=1, is_deconv=True, is_batchnorm=True, is_ds=True):
+    def __init__(self, n_channels=1, n_classes=2, feature_scale=1, is_deconv=True, is_batchnorm=True, is_ds=True):
         super(ParallelNestedUNet, self).__init__()
-        self.in_channels = in_channels
+        self.n_channels = n_channels
+        self.n_classes = n_classes
         self.feature_scale = feature_scale
         self.is_deconv = is_deconv
         self.is_batchnorm = is_batchnorm
@@ -101,13 +102,13 @@ class ParallelNestedUNet(nn.Module):
 
         # downsampling
         self.maxpool = nn.MaxPool2d(kernel_size=2)
-        self.convx00 = UnetConv2(self.in_channels, filters[0], self.is_batchnorm)
+        self.convx00 = UnetConv2(self.n_channels, filters[0], self.is_batchnorm)
         self.convx10 = UnetConv2(filters[0], filters[1], self.is_batchnorm)
         self.convx20 = UnetConv2(filters[1], filters[2], self.is_batchnorm)
         self.convx30 = UnetConv2(filters[2], filters[3], self.is_batchnorm)
         self.convx40 = UnetConv2(filters[3], filters[4], self.is_batchnorm)
 
-        self.convy00 = UnetConv2(self.in_channels, filters[0], self.is_batchnorm)
+        self.convy00 = UnetConv2(self.n_channels, filters[0], self.is_batchnorm)
         self.convy10 = UnetConv2(filters[0], filters[1], self.is_batchnorm)
         self.convy20 = UnetConv2(filters[1], filters[2], self.is_batchnorm)
         self.convy30 = UnetConv2(filters[2], filters[3], self.is_batchnorm)

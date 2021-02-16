@@ -193,8 +193,8 @@ def get_args():
                         help='Downscaling factor of the images')
     parser.add_argument('-v', '--validation', dest='val', type=float, default=10.0,
                         help="Percent of the data used as validation (0-100)")
-    parser.add_argument('-n', '--network', deest='net_type', type=str, default="unet",
-                        help="Type of network, current available: unet, nestedunet")
+    parser.add_argument('-m', '--model', dest='model_type', type=str, default="unet",
+                        help="Type of model, current available: unet, nested_unet")
 
     return parser.parse_args()
 
@@ -209,21 +209,21 @@ if __name__ == '__main__':
     #   - For 1 class and background, use n_classes=1
     #   - For 2 classes, use n_classes=1
     #   - For N > 2 classes, use n_classes=N
-    net_type = str(args.net_type)
-    if net_type == "unet":
+    model_type = str(args.model_type)
+    if model_type == "unet":
         from parallelunet import ParallelUNet
 
         net = ParallelUNet(n_channels=3, n_classes=1, bilinear=True)
-    elif net_type == "nestedunet":
+    elif model_type == "nested_unet":
         from parallelnestedunet import ParallelNestedUNet
 
-        net = ParallelNestedUNet(in_channels=3, n_classes=1)
+        net = ParallelNestedUNet(n_channels=3, n_classes=1)
+    else:
+        logging.error("Unsupported model type '{}'".format(model_type))
 
-    logging.info('Network:\n'
+    logging.info('PARALLEL_{}:\n'
                  '\t{} input channels\n'
-                 '\t{} output channels (classes)\n'
-                 '\t{type} upscaling\n'.format(net.n_channels, net.n_classes,
-                                               type="Bilinear" if net.bilinear else "Transposed conv"))
+                 '\t{} output channels (classes)\n'.format(model_type.upper(), net.n_channels, net.n_classes))
     try:
         if args.load:
             train_net(net=net,
