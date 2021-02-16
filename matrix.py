@@ -5,7 +5,6 @@ import os
 import cv2
 import matlab.engine
 import numpy as np
-from matplotlib import pyplot as plt
 from tqdm import tqdm
 
 from eval import metrics

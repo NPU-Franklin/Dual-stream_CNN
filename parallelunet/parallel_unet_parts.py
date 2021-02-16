@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .bridge import Bridge
+from bridge import Bridge
 
 
 class ParallelDoubleConv(nn.Module):

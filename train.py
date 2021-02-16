@@ -10,8 +10,8 @@ from torch.utils.data import DataLoader, random_split
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from unet import UNet
 from eval import eval_net
+from unet import UNet
 from utils import MoNuSegTrainingDataset, MoNuSegTestDataset
 
 os.environ['CUDA_VISIBLE_DIVICES'] = "0, 1, 2"
@@ -190,7 +190,7 @@ if __name__ == '__main__':
                  '\t{} input channels\n'
                  '\t{} output channels (classes)\n'
                  '\t{type} upscaling\n'.format(net.n_channels, net.n_classes,
-                                                 type="Bilinear" if net.bilinear else "Transposed conv"))
+                                               type="Bilinear" if net.bilinear else "Transposed conv"))
 
     try:
         if args.load:

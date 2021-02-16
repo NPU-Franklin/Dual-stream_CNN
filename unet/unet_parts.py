@@ -25,7 +25,6 @@ class DoubleConv(nn.Module):
         return self.double_conv(x)
 
 
-
 class Down(nn.Module):
     """Downscaling with maxpool then double conv"""
 

@@ -11,7 +11,6 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from parallel_eval import eval_parallel_net
-from parallelunet import ParallelUNet
 from utils import MoNuSegTrainingDataset, MoNuSegTestDataset
 
 os.environ['CUDA_VISIBLE_DIVICES'] = "0, 1, 2"
@@ -194,6 +193,8 @@ def get_args():
                         help='Downscaling factor of the images')
     parser.add_argument('-v', '--validation', dest='val', type=float, default=10.0,
                         help="Percent of the data used as validation (0-100)")
+    parser.add_argument('-n', '--network', deest='net_type', type=str, default="unet",
+                        help="Type of network, current available: unet, nestedunet")
 
     return parser.parse_args()
 
@@ -208,7 +209,16 @@ if __name__ == '__main__':
     #   - For 1 class and background, use n_classes=1
     #   - For 2 classes, use n_classes=1
     #   - For N > 2 classes, use n_classes=N
-    net = ParallelUNet(n_channels=3, n_classes=1, bilinear=True)
+    net_type = str(args.net_type)
+    if net_type == "unet":
+        from parallelunet import ParallelUNet
+
+        net = ParallelUNet(n_channels=3, n_classes=1, bilinear=True)
+    elif net_type == "nestedunet":
+        from parallelnestedunet import ParallelNestedUNet
+
+        net = ParallelNestedUNet(in_channels=3, n_classes=1)
+
     logging.info('Network:\n'
                  '\t{} input channels\n'
                  '\t{} output channels (classes)\n'
