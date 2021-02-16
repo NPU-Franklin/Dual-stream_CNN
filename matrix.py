@@ -3,9 +3,9 @@ import logging
 import os
 
 import cv2
-import matlab
 import matlab.engine
 import numpy as np
+from matplotlib import pyplot as plt
 from tqdm import tqdm
 
 from eval import metrics
@@ -18,7 +18,7 @@ def parse_args():
     parser.add_argument('-i', '--input', dest='input', type=str, default='', help='input dir')
     parser.add_argument('-m', '--matrix', dest='matrix', type=str, default='Hausdorff', help='evaluation matrix, '
                                                                                              'include: Hausdorff, '
-                                                                                             'AJI, brp_AJI')
+                                                                                             'AJI, fast_AJI')
 
     return parser.parse_args()
 
@@ -33,9 +33,10 @@ if __name__ == "__main__":
     matrix = str(args.matrix)
     logging.info("Loading images from {}".format(input))
 
-    eng = matlab.engine.start_matlab()
-    eng.cd("./eval")
-    logging.info("Matlab engine start")
+    if matrix == "Hausdorff" or matrix == "AJI":
+        eng = matlab.engine.start_matlab()
+        eng.cd("./eval")
+        logging.info("Matlab engine start")
 
     imgs = os.listdir(input + "/true")
     logging.info("Input {} images".format(len(imgs)))
@@ -51,15 +52,18 @@ if __name__ == "__main__":
             elif matrix == "AJI":
                 scores.append(
                     eng.Aggregated_Jaccard_Index_v1_0(matlab.single(true.tolist()), matlab.single(pred.tolist())))
-            elif matrix == "brp_AJI":
+            elif matrix == "fast_AJI":
                 scores.append(metrics.get_fast_aji(metrics.remap_label(true), metrics.remap_label(pred)))
             else:
                 raise ValueError("Unsupported matrix {}".format(matrix))
             pbar.update()
-    score = np.array(scores).mean()
-    min = min(scores)
-    max = max(scores)
+    scores = np.array(scores)
+    score = scores.mean()
+    std = scores.std()
+    CI = [score - 1.96 * (std / (len(imgs) ** 0.5)), score + 1.96 * (std / (len(imgs) ** 0.5))]
     logging.info("{} Score: {}".format(matrix, score))
-    logging.info("Range: {} ~ {}".format(min, max))
+    logging.info("95% CI: {}".format(CI))
+    logging.info("Range: {} ~ {}".format(min(scores), max(scores)))
 
-    eng.exit()
+    if matrix == "Hausdorff" or matrix == "AJI":
+        eng.exit()
