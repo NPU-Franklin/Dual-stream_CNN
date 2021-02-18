@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 import sys
+import time
 
 import torch
 import torch.nn as nn
@@ -15,7 +16,10 @@ from utils import MoNuSegTrainingDataset, MoNuSegTestDataset
 
 os.environ['CUDA_VISIBLE_DIVICES'] = "0, 1, 2"
 
-DIR_CHECKPOINTS = './checkpoints/parallelunet/'
+LOCALTIME = time.localtime(time.time())
+DIR_CHECKPOINTS = './checkpoints/parallel_{}_{}_{}_{}-{}-{}/'.format(LOCALTIME.tm_year, LOCALTIME.tm_mon,
+                                                                     LOCALTIME.tm_mday, LOCALTIME.tm_hour,
+                                                                     LOCALTIME.tm_min, LOCALTIME.tm_sec)
 
 
 def train_net(net,
@@ -172,7 +176,7 @@ def train_net(net,
                 logging.info('Created checkpoint directory')
             except OSError:
                 pass
-            torch.save(net.state_dict(), DIR_CHECKPOINTS + 'ParallelUNet_CP_epoch{}.pth'.format(epoch + 1))
+            torch.save(net.state_dict(), DIR_CHECKPOINTS + 'CP_epoch{}.pth'.format(epoch + 1))
             logging.info('Checkpoints {} saved !'.format(epoch + 1))
 
     writer.close()
