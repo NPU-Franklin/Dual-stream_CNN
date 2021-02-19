@@ -6,7 +6,7 @@
 
 Parallel Network
 
-![architecture](./.record_images/parallelunet.jpg)
+![architecture](./.record_images/parallelunet.png)
 
 [![love](https://forthebadge.com/images/badges/built-with-love.svg)](https://github.com/NPU-Franklin)
 

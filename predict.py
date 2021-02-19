@@ -95,6 +95,7 @@ if __name__ == "__main__":
             with torch.no_grad():
                 masks_pred, edges_pred = net(imgs)
 
+            masks_pred, edges_pred = torch.sigmoid(masks_pred), torch.sigmoid(edges_pred)
             cv2.imwrite("./predictions/{}/true/{}.png".format(output, epoch), convert(true_masks.cpu().numpy().squeeze()))
             cv2.imwrite("./predictions/{}/pred/{}.png".format(output, epoch), convert(masks_pred.cpu().numpy().squeeze()))
 
