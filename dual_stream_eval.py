@@ -1,11 +1,12 @@
 import torch
+# noinspection PyPep8Naming
 import torch.nn.functional as F
 from tqdm import tqdm
 
 from dice_loss import dice_coeff
 
 
-def eval_parallel_net(net, val_loader, n_classes):
+def eval_dual_stream_net(net, val_loader, n_classes):
     """Evaluation without the densecrf with the dice coefficient"""
     net.eval()
     n_val = len(val_loader)

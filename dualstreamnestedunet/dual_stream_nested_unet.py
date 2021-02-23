@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn import init
 
-from bridge import Bridge
+from crossstitch import CrossStitch
 
 
 # initialize the module
@@ -18,9 +18,9 @@ def weights_init_kaiming(m):
     classname = m.__class__.__name__
     # print(classname)
     if classname.find('Conv') != -1:
-        init.kaiming_normal_(m.weight.data, a=0, mode='fan_in')
+        init.kaiming_normal_(m.weight.data)
     elif classname.find('Linear') != -1:
-        init.kaiming_normal_(m.weight.data, a=0, mode='fan_in')
+        init.kaiming_normal_(m.weight.data)
     elif classname.find('BatchNorm') != -1:
         init.normal_(m.weight.data, 1.0, 0.02)
         init.constant_(m.bias.data, 0.0)
@@ -68,7 +68,7 @@ class UnetUp(nn.Module):
         super(UnetUp, self).__init__()
         self.conv = UnetConv2(in_size + (n_concat - 2) * out_size, out_size, False)
         if is_deconv:
-            self.up = nn.ConvTranspose2d(in_size, out_size, kernel_size=2, stride=2, padding=0)
+            self.up = nn.ConvTranspose2d(in_size, out_size, kernel_size=2, stride=2)
         else:
             self.up = nn.Sequential(
                 nn.UpsamplingBilinear2d(scale_factor=2),
@@ -76,7 +76,8 @@ class UnetUp(nn.Module):
 
         # initialise the blocks
         for m in self.children():
-            if m.__class__.__name__.find('UnetConv2') != -1: continue
+            if m.__class__.__name__.find('UnetConv2') != -1:
+                continue
             init_weights(m, init_type='kaiming')
 
     def forward(self, high_feature, *low_feature):
@@ -86,10 +87,10 @@ class UnetUp(nn.Module):
         return self.conv(outputs0)
 
 
-class ParallelNestedUNet(nn.Module):
+class DualStreamNestedUNet(nn.Module):
 
     def __init__(self, n_channels=1, n_classes=2, feature_scale=1, is_deconv=True, is_batchnorm=True, is_ds=True):
-        super(ParallelNestedUNet, self).__init__()
+        super(DualStreamNestedUNet, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.feature_scale = feature_scale
@@ -114,10 +115,10 @@ class ParallelNestedUNet(nn.Module):
         self.convy30 = UnetConv2(filters[2], filters[3], self.is_batchnorm)
         self.convy40 = UnetConv2(filters[3], filters[4], self.is_batchnorm)
 
-        self.bridge0 = Bridge(filters[0])
-        self.bridge1 = Bridge(filters[1])
-        self.bridge2 = Bridge(filters[2])
-        self.bridge3 = Bridge(filters[3])
+        self.cross_stitch0 = CrossStitch(filters[0])
+        self.cross_stitch1 = CrossStitch(filters[1])
+        self.cross_stitch2 = CrossStitch(filters[2])
+        self.cross_stitch3 = CrossStitch(filters[3])
 
         # upsampling
         self.up_concatx01 = UnetUp(filters[1], filters[0], self.is_deconv)
@@ -168,74 +169,74 @@ class ParallelNestedUNet(nn.Module):
 
     def forward(self, inputs):
         # column : 0
-        X_00 = self.convx00(inputs)  # 16*512*512
-        Y_00 = self.convy00(inputs)
-        maxpoolx0 = self.maxpool(X_00)  # 16*256*256
-        maxpooly0 = self.maxpool(Y_00)
-        maxpool0 = self.bridge0(maxpoolx0, maxpooly0)
+        x_00 = self.convx00(inputs)  # 16*512*512
+        y_00 = self.convy00(inputs)
+        maxpoolx0 = self.maxpool(x_00)  # 16*256*256
+        maxpooly0 = self.maxpool(y_00)
+        maxpool0 = self.cross_stitch0(maxpoolx0, maxpooly0)
 
-        X_10 = self.convx10(maxpool0)  # 32*256*256
-        Y_10 = self.convy10(maxpool0)
-        maxpoolx1 = self.maxpool(X_10)  # 32*128*128
-        maxpooly1 = self.maxpool(Y_10)
-        maxpool1 = self.bridge1(maxpoolx1, maxpooly1)
+        x_10 = self.convx10(maxpool0)  # 32*256*256
+        y_10 = self.convy10(maxpool0)
+        maxpoolx1 = self.maxpool(x_10)  # 32*128*128
+        maxpooly1 = self.maxpool(y_10)
+        maxpool1 = self.cross_stitch1(maxpoolx1, maxpooly1)
 
-        X_20 = self.convx20(maxpool1)  # 64*128*128
-        Y_20 = self.convy20(maxpool1)
-        maxpoolx2 = self.maxpool(X_20)  # 64*64*64
-        maxpooly2 = self.maxpool(Y_20)
-        maxpool2 = self.bridge2(maxpoolx2, maxpooly2)
+        x_20 = self.convx20(maxpool1)  # 64*128*128
+        y_20 = self.convy20(maxpool1)
+        maxpoolx2 = self.maxpool(x_20)  # 64*64*64
+        maxpooly2 = self.maxpool(y_20)
+        maxpool2 = self.cross_stitch2(maxpoolx2, maxpooly2)
 
-        X_30 = self.convx30(maxpool2)  # 128*64*64
-        Y_30 = self.convy30(maxpool2)
-        maxpoolx3 = self.maxpool(X_30)  # 128*32*32
-        maxpooly3 = self.maxpool(Y_30)
-        maxpool3 = self.bridge3(maxpoolx3, maxpooly3)
+        x_30 = self.convx30(maxpool2)  # 128*64*64
+        y_30 = self.convy30(maxpool2)
+        maxpoolx3 = self.maxpool(x_30)  # 128*32*32
+        maxpooly3 = self.maxpool(y_30)
+        maxpool3 = self.cross_stitch3(maxpoolx3, maxpooly3)
 
-        X_40 = self.convx40(maxpool3)  # 256*32*32
-        Y_40 = self.convy40(maxpool3)
-
-        # column : 1
-        X_01 = self.up_concatx01(X_10, X_00)
-        X_11 = self.up_concatx11(X_20, X_10)
-        X_21 = self.up_concatx21(X_30, X_20)
-        X_31 = self.up_concatx31(X_40, X_30)
-        # column : 2
-        X_02 = self.up_concatx02(X_11, X_00, X_01)
-        X_12 = self.up_concatx12(X_21, X_10, X_11)
-        X_22 = self.up_concatx22(X_31, X_20, X_21)
-        # column : 3
-        X_03 = self.up_concatx03(X_12, X_00, X_01, X_02)
-        X_13 = self.up_concatx13(X_22, X_10, X_11, X_12)
-        # column : 4
-        X_04 = self.up_concatx04(X_13, X_00, X_01, X_02, X_03)
+        x_40 = self.convx40(maxpool3)  # 256*32*32
+        y_40 = self.convy40(maxpool3)
 
         # column : 1
-        Y_01 = self.up_concaty01(Y_10, Y_00)
-        Y_11 = self.up_concaty11(Y_20, Y_10)
-        Y_21 = self.up_concaty21(Y_30, Y_20)
-        Y_31 = self.up_concaty31(Y_40, Y_30)
+        x_01 = self.up_concatx01(x_10, x_00)
+        x_11 = self.up_concatx11(x_20, x_10)
+        x_21 = self.up_concatx21(x_30, x_20)
+        x_31 = self.up_concatx31(x_40, x_30)
         # column : 2
-        Y_02 = self.up_concaty02(Y_11, Y_00, Y_01)
-        Y_12 = self.up_concaty12(Y_21, Y_10, Y_11)
-        Y_22 = self.up_concaty22(Y_31, Y_20, Y_21)
+        x_02 = self.up_concatx02(x_11, x_00, x_01)
+        x_12 = self.up_concatx12(x_21, x_10, x_11)
+        x_22 = self.up_concatx22(x_31, x_20, x_21)
         # column : 3
-        Y_03 = self.up_concaty03(Y_12, Y_00, Y_01, Y_02)
-        Y_13 = self.up_concaty13(Y_22, Y_10, Y_11, Y_12)
+        x_03 = self.up_concatx03(x_12, x_00, x_01, x_02)
+        x_13 = self.up_concatx13(x_22, x_10, x_11, x_12)
         # column : 4
-        Y_04 = self.up_concaty04(Y_13, Y_00, Y_01, Y_02, Y_03)
+        x_04 = self.up_concatx04(x_13, x_00, x_01, x_02, x_03)
+
+        # column : 1
+        y_01 = self.up_concaty01(y_10, y_00)
+        y_11 = self.up_concaty11(y_20, y_10)
+        y_21 = self.up_concaty21(y_30, y_20)
+        y_31 = self.up_concaty31(y_40, y_30)
+        # column : 2
+        y_02 = self.up_concaty02(y_11, y_00, y_01)
+        y_12 = self.up_concaty12(y_21, y_10, y_11)
+        y_22 = self.up_concaty22(y_31, y_20, y_21)
+        # column : 3
+        y_03 = self.up_concaty03(y_12, y_00, y_01, y_02)
+        y_13 = self.up_concaty13(y_22, y_10, y_11, y_12)
+        # column : 4
+        y_04 = self.up_concaty04(y_13, y_00, y_01, y_02, y_03)
 
         # final layer
-        finalx_1 = self.finalx_1(X_01)
-        finalx_2 = self.finalx_2(X_02)
-        finalx_3 = self.finalx_3(X_03)
-        finalx_4 = self.finalx_4(X_04)
+        finalx_1 = self.finalx_1(x_01)
+        finalx_2 = self.finalx_2(x_02)
+        finalx_3 = self.finalx_3(x_03)
+        finalx_4 = self.finalx_4(x_04)
 
         # final layer
-        finaly_1 = self.finaly_1(Y_01)
-        finaly_2 = self.finaly_2(Y_02)
-        finaly_3 = self.finaly_3(Y_03)
-        finaly_4 = self.finaly_4(Y_04)
+        finaly_1 = self.finaly_1(y_01)
+        finaly_2 = self.finaly_2(y_02)
+        finaly_3 = self.finaly_3(y_03)
+        finaly_4 = self.finaly_4(y_04)
 
         finalx = (finalx_1 + finalx_2 + finalx_3 + finalx_4) / 4
         finaly = (finaly_1 + finaly_2 + finaly_3 + finaly_4) / 4

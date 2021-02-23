@@ -77,13 +77,13 @@ class Preprocessor:
 
     def patch(self, filename, patch_size):
         img = cv2.imread(self.output + "/Tissue Images/" + filename + self.type)
-        img = np.pad(img, ((12, 12), (12, 12), (0, 0)), "constant")
+        img = np.pad(img, ((12, 12), (12, 12), (0, 0)))
 
         mask = cv2.imread(self.output + "/Masks/" + filename + ".png")
-        mask = np.pad(mask, ((12, 12), (12, 12), (0, 0)), "constant")
+        mask = np.pad(mask, ((12, 12), (12, 12), (0, 0)))
 
         edge = cv2.imread(self.output + "/Edges/" + filename + ".png")
-        edge = np.pad(edge, ((12, 12), (12, 12), (0, 0)), "constant")
+        edge = np.pad(edge, ((12, 12), (12, 12), (0, 0)))
 
         num_rows = int((img.shape[0] - 256) / 128) + 1
         num_cols = int(img.shape[1] // 256)

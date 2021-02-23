@@ -1,7 +1,8 @@
-opencv-python
-numpy
-tqdm
-torch
-torchvision
-tensorboard
-numba
+opencv-python~=4.3.0.36
+numpy~=1.19.0
+tqdm~=4.48.0
+torch~=1.7.1
+torchvision~=0.8.2
+numba~=0.50.1
+scipy~=1.5.0
+pillow~=7.2.0

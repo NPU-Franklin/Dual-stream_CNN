@@ -1,11 +1,11 @@
 """
-bridge unit for parallel-network
+cross_stitch unit for dual_stream CNN
 """
 import torch
 import torch.nn as nn
 
 
-class Bridge(nn.Module):
+class CrossStitch(nn.Module):
     def __init__(self, in_channels):
         super().__init__()
         # initialize

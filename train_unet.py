@@ -2,7 +2,6 @@ import argparse
 import logging
 import os
 import sys
-import time
 
 import torch
 import torch.nn as nn
@@ -11,15 +10,13 @@ from torch.utils.data import DataLoader, random_split
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from parallel_eval import eval_parallel_net
+from eval_unet import eval_net
+from unet import UNet
 from utils import MoNuSegTrainingDataset, MoNuSegTestDataset
 
 os.environ['CUDA_VISIBLE_DIVICES'] = "0, 1, 2"
 
-LOCALTIME = time.localtime(time.time())
-DIR_CHECKPOINTS = './checkpoints/parallel_{}_{}_{}_{}-{}-{}/'.format(LOCALTIME.tm_year, LOCALTIME.tm_mon,
-                                                                     LOCALTIME.tm_mday, LOCALTIME.tm_hour,
-                                                                     LOCALTIME.tm_min, LOCALTIME.tm_sec)
+DIR_CHECKPOINTS = './checkpoints/unet/'
 
 
 def train_net(net,
@@ -34,7 +31,7 @@ def train_net(net,
     n_classes = net.n_classes
     n_channels = net.n_channels
 
-    writer = SummaryWriter(comment='PARALLEL_LR_{}_BS_{}_SCALE_{}'.format(lr, batch_size, img_scale))
+    writer = SummaryWriter(comment='UNET_LR_{}_BS_{}_SCALE_{}'.format(lr, batch_size, img_scale))
 
     net = nn.DataParallel(net, device_ids=[0, 1])
     if load_args:
@@ -78,13 +75,7 @@ def train_net(net,
         Image scaling:      {}
     """.format(epochs, batch_size, lr, n_train, n_val, n_test, save_cp, device.type, img_scale))
 
-    # cross_stitches = [net.module.down1.bridge.bridge, net.module.down2.bridge.bridge,
-    #                   net.module.down3.bridge.bridge, net.module.down4.bridge.bridge]
-    # ignored_params = list(map(id, cross_stitches))
-    # base_params = list(filter(lambda p: id(p) not in ignored_params, net.parameters()))
-    # optimizer = optim.Adam([{'params': base_params},
-    # {'params': cross_stitches, 'lr': lr * 1000}], lr=lr, weight_decay=1e-7)
-    optimizer = optim.Adam(net.parameters(), lr=lr, weight_decay=1e-7)
+    optimizer = optim.Adam(net.parameters(), lr=lr, weight_decay=1e-8)
 
     if n_classes > 1:
         criterion = nn.CrossEntropyLoss()
@@ -98,7 +89,6 @@ def train_net(net,
             for batch in train_loader:
                 imgs = batch['image']
                 true_masks = batch['mask']
-                true_edges = batch['edge']
                 assert imgs.shape[1] == n_channels, \
                     'Network has been defined with {} input channels, ' \
                     'but loaded images have {} channels. Please check that ' \
@@ -106,21 +96,16 @@ def train_net(net,
 
                 imgs = imgs.cuda()
                 true_masks = true_masks.cuda()
-                true_edges = true_edges.cuda()
 
-                masks_pred, edges_pred = net(imgs)
-                loss1 = criterion(masks_pred, true_masks)
-                loss2 = criterion(edges_pred, true_edges)
-                total_loss = loss1 + loss2
-                writer.add_scalar('Loss/train', total_loss.item(), global_step)
-                writer.add_scalar('Loss/train/mask', loss1.item(), global_step)
-                writer.add_scalar('Loss/train/edge', loss2.item(), global_step)
+                masks_pred = net(imgs)
+                loss = criterion(masks_pred, true_masks)
+                writer.add_scalar('Loss/train', loss.item(), global_step)
 
-                pbar.set_postfix(**{"loss {batch}": total_loss.item()})
+                pbar.set_postfix(**{"loss {batch}": loss.item()})
 
                 optimizer.zero_grad()
-                total_loss.backward()
-                # nn.utils.clip_grad_value_(net.parameters(), 0.1)
+                loss.backward()
+                nn.utils.clip_grad_value_(net.parameters(), 0.1)
                 optimizer.step()
 
                 pbar.update(imgs.shape[0])
@@ -130,8 +115,8 @@ def train_net(net,
             tag = tag.replace('.', '/')
             writer.add_histogram('weights/' + tag, value.data.cpu().numpy(), global_step)
             writer.add_histogram('grads/' + tag, value.grad.data.cpu().numpy(), global_step)
-        val_score1, val_score2 = eval_parallel_net(net, val_loader, n_classes)
-        test_score1, test_score2 = eval_parallel_net(net, test_loader, n_classes)
+        val_score = eval_net(net, val_loader, n_classes)
+        test_score = eval_net(net, test_loader, n_classes)
 
         train, val = random_split(train_dataset, [n_train, n_val])
         train_loader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=9,
@@ -142,33 +127,22 @@ def train_net(net,
         writer.add_scalar('learning_rate', optimizer.param_groups[0]['lr'], global_step)
 
         if n_classes > 1:
-            logging.info('Validation cross entropy for masks: {}'.format(val_score1))
-            logging.info('Validation cross_entropy for edges: {}'.format(val_score2))
-            logging.info('Test cross_entropy for masks: {}'.format(test_score1))
-            logging.info('Test cross_entropy for edges: {}'.format(test_score2))
-            writer.add_scalar('Loss/eval_on_masks', val_score1, global_step)
-            writer.add_scalar('Loss/eval_on_edges', val_score2, global_step)
-            writer.add_scalar('Loss/test_on_masks', test_score1, global_step)
-            writer.add_scalar('Loss/test_on_edges', test_score2, global_step)
+            logging.info('Validation cross entropy for masks: {}'.format(val_score))
+            logging.info('Test cross_entropy for masks: {}'.format(test_score))
+            writer.add_scalar('Loss/eval_on_masks', val_score, global_step)
+            writer.add_scalar('Loss/test_on_masks', test_score, global_step)
         else:
-            logging.info('Validation Dice Coeff for masks: {}'.format(val_score1))
-            logging.info('Validation Dice Coeff for edges: {}'.format(val_score2))
-            logging.info('Test Dice Coeff for masks: {}'.format(test_score1))
-            logging.info('Test Dice Coeff for edges: {}'.format(test_score2))
-            writer.add_scalar('Dice/eval_on_masks', val_score1, global_step)
-            writer.add_scalar('Dice/eval_on_edges', val_score2, global_step)
-            writer.add_scalar('Dice/test_on_masks', test_score1, global_step)
-            writer.add_scalar('Dice/test_on_edges', test_score2, global_step)
+            logging.info('Validation Dice Coeff for masks: {}'.format(val_score))
+            logging.info('Test Dice Coeff for masks: {}'.format(test_score))
+            writer.add_scalar('Dice/eval_on_masks', val_score, global_step)
+            writer.add_scalar('Dice/test_on_masks', test_score, global_step)
 
         writer.add_images('images', imgs, global_step)
         writer.add_images('masks/true', true_masks, global_step)
-        writer.add_images('edges/true', true_edges, global_step)
         if n_classes == 1:
             writer.add_images('masks/pred', torch.sigmoid(masks_pred) > 0.5, global_step)
-            writer.add_images('edges/pred', torch.sigmoid(edges_pred) > 0.5, global_step)
         else:
             writer.add_images('masks/pred', masks_pred > 0.5, global_step)
-            writer.add_images('edges/pred', edges_pred > 0.5, global_step)
 
         if save_cp:
             try:
@@ -176,14 +150,14 @@ def train_net(net,
                 logging.info('Created checkpoint directory')
             except OSError:
                 pass
-            torch.save(net.state_dict(), DIR_CHECKPOINTS + 'CP_epoch{}.pth'.format(epoch + 1))
+            torch.save(net.state_dict(), DIR_CHECKPOINTS + 'UNet_CP_epoch{}.pth'.format(epoch + 1))
             logging.info('Checkpoints {} saved !'.format(epoch + 1))
 
     writer.close()
 
 
 def get_args():
-    parser = argparse.ArgumentParser(description='Train the Parallel UNet on images, target masks and target edges',
+    parser = argparse.ArgumentParser(description='Train the UNet on images and target masks',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-e', '--epochs', metavar='E', type=int, default=5,
                         help='Number of epochs', dest='epochs')
@@ -197,8 +171,6 @@ def get_args():
                         help='Downscaling factor of the images')
     parser.add_argument('-v', '--validation', dest='val', type=float, default=10.0,
                         help="Percent of the data used as validation (0-100)")
-    parser.add_argument('-m', '--model', dest='model_type', type=str, default="unet",
-                        help="Type of model, current available: unet, nested_unet")
 
     return parser.parse_args()
 
@@ -213,21 +185,13 @@ if __name__ == '__main__':
     #   - For 1 class and background, use n_classes=1
     #   - For 2 classes, use n_classes=1
     #   - For N > 2 classes, use n_classes=N
-    model_type = str(args.model_type)
-    if model_type == "unet":
-        from parallelunet import ParallelUNet
-
-        net = ParallelUNet(n_channels=3, n_classes=1, bilinear=True)
-    elif model_type == "nested_unet":
-        from parallelnestedunet import ParallelNestedUNet
-
-        net = ParallelNestedUNet(n_channels=3, n_classes=1)
-    else:
-        logging.error("Unsupported model type '{}'".format(model_type))
-
-    logging.info('PARALLEL_{}:\n'
+    net = UNet(n_channels=3, n_classes=1)
+    logging.info('Network:\n'
                  '\t{} input channels\n'
-                 '\t{} output channels (classes)\n'.format(model_type.upper(), net.n_channels, net.n_classes))
+                 '\t{} output channels (classes)\n'
+                 '\t{type} upscaling\n'.format(net.n_channels, net.n_classes,
+                                               type="Bilinear" if net.bilinear else "Transposed conv"))
+
     try:
         if args.load:
             train_net(net=net,

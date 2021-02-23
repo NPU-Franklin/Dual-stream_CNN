@@ -13,19 +13,19 @@ def eval_net(net, val_loader, n_classes):
 
     with tqdm(total=n_val, desc="Validation or test round", unit='batch', leave=False) as pbar:
         for batch in val_loader:
-            imgs, true_edges = batch['image'], batch['edge']
+            imgs, true_masks = batch['image'], batch['mask']
             imgs = imgs.cuda()
-            true_edges = true_edges.cuda()
+            true_masks = true_masks.cuda()
 
             with torch.no_grad():
-                edge_pred = net(imgs)
+                masks_pred = net(imgs)
 
             if n_classes > 1:
-                tot += F.cross_entropy(edge_pred, true_edges).item()
+                tot += F.cross_entropy(masks_pred, true_masks).item()
             else:
-                pred = torch.sigmoid(edge_pred)
+                pred = torch.sigmoid(masks_pred)
                 pred = (pred > 0.5).float()
-                tot += dice_coeff(pred, true_edges).item()
+                tot += dice_coeff(pred, true_masks).item()
             pbar.update()
 
     net.train()

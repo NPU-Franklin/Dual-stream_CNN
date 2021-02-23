@@ -12,7 +12,6 @@ function aji = Aggregated_Jaccard_Index_v1_0(gt_map,predicted_map)
 % maximum number of predicted nuclei
 gt_list = unique(gt_map); % set of unique gt nuclei
 gt_list = gt_list(2:end); % exclude 0
-ngt = numel(gt_list);
 
 % Read the predicted matrix where each predicted nuclei is indexed by a
 % unique integer
@@ -22,7 +21,6 @@ pr_list = unique(predicted_map); % ordered set of unique gt nuclei
 pr_list = pr_list(2:end); % exclude 0
 % mark used nuclei by the number of uses (you can use any other criteria) 
 pr_list =  [pr_list, zeros(size(pr_list,1),1)];
-npredicted = numel(pr_list(:,1));
 
 % intialize intersection and union pixel counts to zero
 overall_correct_count = 0;

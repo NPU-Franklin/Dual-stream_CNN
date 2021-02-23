@@ -1,26 +1,26 @@
 """ Full assembly of the parts to form the complete network """
 
-from .parallel_unet_parts import *
+from .dual_stream_unet_parts import *
 
 
-class ParallelUNet(nn.Module):
+class DualStreamUNet(nn.Module):
     def __init__(self, n_channels, n_classes, bilinear=True):
-        super(ParallelUNet, self).__init__()
+        super(DualStreamUNet, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
 
-        self.inc = ParallelDoubleConv(n_channels, 64)
-        self.down1 = ParallelDown(64, 128)
-        self.down2 = ParallelDown(128, 256)
-        self.down3 = ParallelDown(256, 512)
+        self.inc = DualStreamDoubleConv(n_channels, 64)
+        self.down1 = DualStreamDown(64, 128)
+        self.down2 = DualStreamDown(128, 256)
+        self.down3 = DualStreamDown(256, 512)
         factor = 2 if bilinear else 1
-        self.down4 = ParallelDown(512, 1024 // factor)
-        self.up1 = ParallelUp(1024, 512 // factor, bilinear)
-        self.up2 = ParallelUp(512, 256 // factor, bilinear)
-        self.up3 = ParallelUp(256, 128 // factor, bilinear)
-        self.up4 = ParallelUp(128, 64, bilinear)
-        self.outc = ParallelOutConv(64, n_classes)
+        self.down4 = DualStreamDown(512, 1024 // factor)
+        self.up1 = DualStreamUp(1024, 512 // factor, bilinear)
+        self.up2 = DualStreamUp(512, 256 // factor, bilinear)
+        self.up3 = DualStreamUp(256, 128 // factor, bilinear)
+        self.up4 = DualStreamUp(128, 64, bilinear)
+        self.outc = DualStreamOutConv(64, n_classes)
 
     def forward(self, x):
         x1_1, x1_2 = self.inc(x, x)

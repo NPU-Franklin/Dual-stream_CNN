@@ -29,9 +29,9 @@ class BasicDataset(Dataset):
             w, h, _ = img.shape
         else:
             w, h = img.shape
-        newW, newH = int(scale * w), int(scale * h)
-        assert newW > 0 and newH > 0, 'Scale is too small'
-        img = cv2.resize(img, (newW, newH))
+        new_w, new_h = int(scale * w), int(scale * h)
+        assert new_w > 0 and new_h > 0, 'Scale is too small'
+        img = cv2.resize(img, (new_w, new_h))
 
         img_nd = np.array(img)
 
@@ -39,7 +39,7 @@ class BasicDataset(Dataset):
             img_nd = np.expand_dims(img_nd, axis=2)
         # HWC2CHW
         img_trans = img_nd.transpose((2, 0, 1))
-        if img_trans.max() > 1:
+        if np.max(img_trans) > 1:
             img_trans = img_trans / 255
 
         return img_trans

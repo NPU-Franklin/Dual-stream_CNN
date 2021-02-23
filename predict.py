@@ -31,7 +31,7 @@ def get_args():
         description="Predict masks on trained network (results will be saved under './predictions' dir)",
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-m', '--model', dest='model', type=str, default='parallel_unet',
-                        help='Name of model, current available: unet, parallel_unet, parallel_nested_unet')
+                        help='Name of model, current available: unet, parallel_unet, parallel_nested_unet, autoencoder')
     parser.add_argument('-f', '--load', dest='load', type=str, default="",
                         help='Load net from a .pth file')
     parser.add_argument('-o', '--output', dest='output', type=str, default="", help='Name of output dir')
@@ -55,17 +55,35 @@ if __name__ == "__main__":
 
     logging.info("Model type: {}".format(model.upper()))
     if model == 'parallel_unet':
-        from parallelunet import ParallelUNet
+        from dualstreamunet import DualStreamUNet
 
-        net = ParallelUNet(3, 1)
+        net = DualStreamUNet(3, 1)
     elif model == 'unet':
         from unet import UNet
 
         net = UNet(3, 1)
     elif model == 'parallel_nested_unet':
-        from parallelnestedunet import ParallelNestedUNet
+        from dualstreamnestedunet import DualStreamNestedUNet
 
-        net = ParallelNestedUNet(3, 1)
+        net = DualStreamNestedUNet(3, 1)
+    elif model == 'autoencoder':
+        from unet import UNet
+        from autoencoder import AutoEncoder
+
+        netx = UNet(n_channels=3, n_classes=1)
+        nety = UNet(n_channels=3, n_classes=1)
+        net = AutoEncoder()
+
+        netx = nn.DataParallel(netx, device_ids=[0, 1])
+        nety = nn.DataParallel(nety, device_ids=[0, 1])
+
+        netx.load_state_dict(torch.load("./checkpoints/unet_mask/UNet_CP_epoch29.pth"))
+        netx.cuda()
+        netx.eval()
+
+        nety.load_state_dict(torch.load("./checkpoints/unet/UNet_CP_epoch3.pth"))
+        nety.cuda()
+        nety.eval()
     else:
         logging.error("Unsupported model type '{}'".format(model))
 
@@ -93,11 +111,13 @@ if __name__ == "__main__":
             true_masks = true_masks.cuda()
 
             with torch.no_grad():
-                masks_pred, edges_pred = net(imgs)
+                masks_pred, _ = net(imgs)
 
-            masks_pred, edges_pred = torch.sigmoid(masks_pred), torch.sigmoid(edges_pred)
-            cv2.imwrite("./predictions/{}/true/{}.png".format(output, epoch), convert(true_masks.cpu().numpy().squeeze()))
-            cv2.imwrite("./predictions/{}/pred/{}.png".format(output, epoch), convert(masks_pred.cpu().numpy().squeeze()))
+            masks_pred = torch.sigmoid(masks_pred)
+            cv2.imwrite("./predictions/{}/true/{}.png".format(output, epoch),
+                        convert(true_masks.cpu().numpy().squeeze()))
+            cv2.imwrite("./predictions/{}/pred/{}.png".format(output, epoch),
+                        convert(masks_pred.cpu().numpy().squeeze()))
 
             epoch += 1
     elif model == 'unet':
@@ -109,8 +129,28 @@ if __name__ == "__main__":
             with torch.no_grad():
                 masks_pred = net(imgs)
 
-            cv2.imwrite("./predictions/{}/true/{}.png".format(output, epoch), convert(true_masks.cpu().numpy().squeeze()))
-            cv2.imwrite("./predictions/{}/pred/{}.png".format(output, epoch), convert(masks_pred.cpu().numpy().squeeze()))
+            cv2.imwrite("./predictions/{}/true/{}.png".format(output, epoch),
+                        convert(true_masks.cpu().numpy().squeeze()))
+            cv2.imwrite("./predictions/{}/pred/{}.png".format(output, epoch),
+                        convert(masks_pred.cpu().numpy().squeeze()))
+
+            epoch += 1
+    elif model == 'autoencoder':
+        for batch in tqdm(test_loader):
+            imgs, true_masks = batch['image'], batch['mask']
+            imgs = imgs.cuda()
+            true_masks = true_masks.cuda()
+
+            with torch.no_grad():
+                input1 = netx(imgs)
+                input2 = nety(imgs)
+                input = torch.cat([input1, input2], dim=1)
+                masks_pred = net(input)
+
+            cv2.imwrite("./predictions/{}/true/{}.png".format(output, epoch),
+                        convert(true_masks.cpu().numpy().squeeze()))
+            cv2.imwrite("./predictions/{}/pred/{}.png".format(output, epoch),
+                        convert(masks_pred.cpu().numpy().squeeze()))
 
             epoch += 1
 
