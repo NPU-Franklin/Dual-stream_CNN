@@ -5,4 +5,4 @@ torch~=1.7.1
 torchvision~=0.8.2
 numba~=0.50.1
 scipy~=1.5.0
-pillow~=7.2.0
+pillow~=8.1.0
