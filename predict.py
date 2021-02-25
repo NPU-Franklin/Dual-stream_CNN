@@ -105,7 +105,7 @@ if __name__ == "__main__":
     logging.info("Output Dir: './predictions/{}'".format(output))
 
     epoch = 0
-    if model == 'parallel_unet' or model == 'parallel_nested_unet':
+    if model == 'dual_stream_unet' or model == 'dual_stream_nested_unet':
         for batch in tqdm(test_loader):
             imgs, true_masks = batch['image'], batch['mask']
             imgs = imgs.cuda()
