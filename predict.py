@@ -31,7 +31,8 @@ def get_args():
         description="Predict masks on trained network (results will be saved under './predictions' dir)",
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-m', '--model', dest='model', type=str, default='parallel_unet',
-                        help='Name of model, current available: unet, parallel_unet, parallel_nested_unet, autoencoder')
+                        help='Name of model, current available: unet, dual_stream_unet, dual_stream_nested_unet, '
+                             'autoencoder')
     parser.add_argument('-f', '--load', dest='load', type=str, default="",
                         help='Load net from a .pth file')
     parser.add_argument('-o', '--output', dest='output', type=str, default="", help='Name of output dir')
@@ -54,7 +55,7 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataset, num_workers=1, pin_memory=True)
 
     logging.info("Model type: {}".format(model.upper()))
-    if model == 'parallel_unet':
+    if model == 'dual_stream_unet':
         from dualstreamunet import DualStreamUNet
 
         net = DualStreamUNet(3, 1)
@@ -62,7 +63,7 @@ if __name__ == "__main__":
         from unet import UNet
 
         net = UNet(3, 1)
-    elif model == 'parallel_nested_unet':
+    elif model == 'dual_stream_nested_unet':
         from dualstreamnestedunet import DualStreamNestedUNet
 
         net = DualStreamNestedUNet(3, 1)
