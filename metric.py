@@ -7,7 +7,7 @@ import matlab.engine
 import numpy as np
 from tqdm import tqdm
 
-from matrics import metrics
+from metrics import metrics
 
 
 def parse_args():
@@ -34,7 +34,7 @@ if __name__ == "__main__":
 
     if matrix == "Hausdorff" or matrix == "AJI":
         eng = matlab.engine.start_matlab()
-        eng.cd("./matrics")
+        eng.cd("./metrics")
         logging.info("Matlab engine start")
 
     imgs = os.listdir(input + "/true")
