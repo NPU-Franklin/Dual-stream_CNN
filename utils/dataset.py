@@ -46,9 +46,9 @@ class BasicDataset(Dataset):
 
     def __getitem__(self, i):
         idx = self.ids[i]
-        img_file = glob(self.imgs_dir + idx + ".png")
-        mask_file = glob(self.masks_dir + idx + ".png")
-        edge_file = glob(self.edges_dir + idx + ".png")
+        img_file = glob(self.imgs_dir + "/" + idx + ".png")
+        mask_file = glob(self.masks_dir + "/" + idx + ".png")
+        edge_file = glob(self.edges_dir + "/" + idx + ".png")
 
         assert len(img_file) == 1, \
             'Either no image or multiple images found for the ID {}: {}'.format(idx, img_file)
@@ -71,14 +71,58 @@ class BasicDataset(Dataset):
 
 
 class MoNuSegTrainingDataset(BasicDataset):
-    def __init__(self, imgs_dir="./data/MoNuSegTrainingData/Patch/Imgs/",
-                 masks_dir="./data/MoNuSegTrainingData/Patch/Masks/",
-                 edges_dir="./data/MoNuSegTrainingData/Patch/Edges/", scale=1):
+    def __init__(self, imgs_dir="./data/MoNuSeg/MoNuSegTrainingData/Patch/Imgs",
+                 masks_dir="./data/MoNuSeg/MoNuSegTrainingData/Patch/Masks",
+                 edges_dir="./data/MoNuSeg/MoNuSegTrainingData/Patch/Edges", scale=1):
         super().__init__(imgs_dir, masks_dir, edges_dir, scale)
 
 
 class MoNuSegTestDataset(BasicDataset):
-    def __init__(self, imgs_dir="./data/MoNuSegTestData/Patch/Imgs/",
-                 masks_dir="./data/MoNuSegTestData/Patch/Masks/",
-                 edges_dir="./data/MoNuSegTestData/Patch/Edges/", scale=1):
+    def __init__(self, imgs_dir="./data/MoNuSeg/MoNuSegTestData/Patch/Imgs",
+                 masks_dir="./data/MoNuSeg/MoNuSegTestData/Patch/Masks",
+                 edges_dir="./data/MoNuSeg/MoNuSegTestData/Patch/Edges", scale=1):
         super().__init__(imgs_dir, masks_dir, edges_dir, scale)
+
+
+class WQUTrainingDataset(BasicDataset):
+    def __init__(self, imgs_dir=r"./data/WarwickQU/TrainingData/Tissue Images",
+                 masks_dir="./data/WarwickQU/TrainingData/Masks",
+                 edges_dir="./data/WarwickQU/TrainingData/Edges", scale=1):
+        super().__init__(imgs_dir, masks_dir, edges_dir, scale)
+
+    @classmethod
+    def preprocess(cls, img, scale, is_image):
+        img = cv2.resize(img, (256, 256))
+
+        img_nd = np.array(img)
+
+        if len(img_nd.shape) == 2:
+            img_nd = np.expand_dims(img_nd, axis=2)
+        # HWC2CHW
+        img_trans = img_nd.transpose((2, 0, 1))
+        if np.max(img_trans) > 1:
+            img_trans = img_trans / 255
+
+        return img_trans
+
+
+class WQUTestDataset(BasicDataset):
+    def __init__(self, imgs_dir=r"./data/WarwickQU/TestData/Tissue Images",
+                 masks_dir="./data/WarwickQU/TestData/Masks",
+                 edges_dir="./data/WarwickQU/TestData/Edges", scale=1):
+        super().__init__(imgs_dir, masks_dir, edges_dir, scale)
+
+    @classmethod
+    def preprocess(cls, img, scale, is_image):
+        img = cv2.resize(img, (256, 256))
+
+        img_nd = np.array(img)
+
+        if len(img_nd.shape) == 2:
+            img_nd = np.expand_dims(img_nd, axis=2)
+        # HWC2CHW
+        img_trans = img_nd.transpose((2, 0, 1))
+        if np.max(img_trans) > 1:
+            img_trans = img_trans / 255
+
+        return img_trans

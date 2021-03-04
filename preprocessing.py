@@ -4,6 +4,7 @@ import sys
 import xml.etree.ElementTree as ET
 
 import cv2
+import numba as nb
 import numpy as np
 import torchvision.transforms.functional as TF
 from PIL import Image
@@ -16,14 +17,10 @@ class Preprocessor:
         self.output = output
         self.type = type
         self.filenames = os.listdir(self.input)
-        try:
-            self.filenames.remove("Masks")
-        except ValueError:
-            pass
-        try:
-            self.filenames.remove("Edges")
-        except ValueError:
-            pass
+        self.split_filenames = []
+        for filename in self.filenames:
+            split_filename, _ = os.path.splitext(filename)
+            self.split_filenames.append(split_filename)
         if not os.path.exists(self.output):
             os.mkdir(self.output)
 
@@ -48,6 +45,22 @@ class Preprocessor:
                     out_img.save(new_filename, "png")
                 new_filenames.append(filename + "_{}".format(angle))
         return new_filenames
+
+    def patch(self, filename, patch_size):
+        pass
+
+
+class MoNuSegPreprocessor(Preprocessor):
+    def __init__(self, input, output, type):
+        super().__init__(input, output, type)
+        try:
+            self.filenames.remove("Masks")
+        except ValueError:
+            pass
+        try:
+            self.filenames.remove("Edges")
+        except ValueError:
+            pass
 
     def xml2mask_and_edge(self, filename):
         mask = np.zeros([1000, 1000], dtype=np.uint8)
@@ -108,6 +121,38 @@ class Preprocessor:
                 cv2.imwrite(self.output + "/Patch/Edges/" + filename + str(r) + "_" + str(c) + ".png", patch_edge)
 
 
+class WQUPreprocess(Preprocessor):
+    def __init__(self, input, output, type):
+        super().__init__(input, output, type)
+
+    @staticmethod
+    @nb.jit(nopython=True)
+    def convert(mask):
+        width, height = mask.shape
+        for w in range(width):
+            for h in range(height):
+                if mask[w, h] > 0:
+                    mask[w, h] = 255
+
+    def gen_masks_and_edges(self, filename):
+        if not os.path.exists(self.output + "/Masks"):
+            os.mkdir(self.output + "/Masks")
+        if not os.path.exists(self.output + "/Edges"):
+            os.mkdir(self.output + "/Edges")
+
+        annotation = cv2.imread(self.input + "/" + filename + ".png")
+        mask = annotation[:, :, 0] + annotation[:, :, 1] + annotation[:, :, 2]
+        self.convert(mask)
+        cv2.imwrite(self.output + "/Masks/" + filename + ".png", mask)
+
+        edge = np.zeros(mask.shape, dtype=np.uint8)
+        gray = cv2.cvtColor(annotation, cv2.COLOR_BGR2GRAY)
+        ret, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY)
+        contours, hierarchy = cv2.findContours(binary, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        cv2.drawContours(edge, contours, -1, 255, 4)
+        cv2.imwrite(self.output + "/Edges/" + filename + ".png", edge)
+
+
 def parse_args(argv):
     parser = argparse.ArgumentParser(description="Preprocess dataset for training or testing.",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -115,6 +160,8 @@ def parse_args(argv):
     parser.add_argument("-i", "--input", type=str, dest="input", help="directory to annotations", default="./")
     parser.add_argument("-o", "--output", type=str, dest="output", help="output directory", default="./")
     parser.add_argument("-t", "--type", type=str, dest="type", help="type of images", default=".png")
+    parser.add_argument("-n", "--name", type=str, dest="name", help="name of dataset, current available: MoNuSeg, WQU",
+                        default="MoNuSeg")
 
     return parser.parse_args(argv)
 
@@ -124,19 +171,23 @@ if __name__ == "__main__":
     input = str(args.input)
     output = str(args.output)
     type = str(args.type)
+    name = str(args.name)
 
-    preprocessor = Preprocessor(input, output, type)
-    split_filenames = []
-    for filename in preprocessor.filenames:
-        split_filename, _ = os.path.splitext(filename)
-        split_filenames.append(split_filename)
+    if name == "MoNuSeg":
+        preprocessor = MoNuSegPreprocessor(input, output, type)
 
-    new_filenames = []
-    for filename in tqdm(split_filenames):
-        preprocessor.xml2mask_and_edge(filename)
-        new = preprocessor.rotate(filename)
-        new_filenames += new
+        new_filenames = []
+        for filename in tqdm(preprocessor.split_filenames):
+            preprocessor.xml2mask_and_edge(filename)
+            new = preprocessor.rotate(filename)
+            new_filenames += new
 
-    for filename in tqdm(set(split_filenames + new_filenames)):
-        preprocessor.patch(filename, 256)
+        for filename in tqdm(set(preprocessor.split_filenames + new_filenames)):
+            preprocessor.patch(filename, 256)
+    elif name == "WQU":
+        preprocessor = WQUPreprocess(input, output, type)
+
+        for filename in tqdm(preprocessor.split_filenames):
+            preprocessor.gen_masks_and_edges(filename)
+            preprocessor.rotate(filename)
     print("Done!")

@@ -10,7 +10,8 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from utils import MoNuSegTestDataset
+# from utils import MoNuSegTestDataset
+from utils import WQUTestDataset
 
 os.environ['CUDA_VISIBLE_DIVICES'] = '0, 1'
 
@@ -51,7 +52,8 @@ if __name__ == "__main__":
     pth = str(args.load)
     output = str(args.output)
 
-    test_dataset = MoNuSegTestDataset()
+    # test_dataset = MoNuSegTestDataset()
+    test_dataset = WQUTestDataset()
     test_loader = DataLoader(test_dataset, num_workers=1, pin_memory=True)
 
     logging.info("Model type: {}".format(model.upper()))
@@ -105,7 +107,7 @@ if __name__ == "__main__":
     logging.info("Output Dir: './predictions/{}'".format(output))
 
     epoch = 0
-    if model == 'parallel_unet' or model == 'parallel_nested_unet':
+    if model == 'dual_stream_unet' or model == 'dual_stream_nested_unet':
         for batch in tqdm(test_loader):
             imgs, true_masks = batch['image'], batch['mask']
             imgs = imgs.cuda()

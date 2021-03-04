@@ -12,7 +12,8 @@ from tqdm import tqdm
 
 from eval_unet import eval_net
 from unet import UNet
-from utils import MoNuSegTrainingDataset, MoNuSegTestDataset
+# from utils import MoNuSegTrainingDataset, MoNuSegTestDataset
+from utils import WQUTrainingDataset, WQUTestDataset
 
 os.environ['CUDA_VISIBLE_DIVICES'] = "0, 1, 2"
 
@@ -48,8 +49,10 @@ def train_net(net,
                 m.bias.data.zero_()
     net.cuda()
 
-    train_dataset = MoNuSegTrainingDataset()
-    test_dataset = MoNuSegTestDataset()
+    # train_dataset = MoNuSegTrainingDataset()
+    # test_dataset = MoNuSegTestDataset()
+    train_dataset = WQUTrainingDataset()
+    test_dataset = WQUTestDataset()
     n_test = len(test_dataset)
     n_val = int(len(train_dataset) * val_percent)
     n_train = len(train_dataset) - n_val
